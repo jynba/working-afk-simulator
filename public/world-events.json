@@ -1,0 +1,37 @@
+{
+  "BUG_FIXED": {
+    "id": "BUG_FIXED",
+    "source": "tapd",
+    "category": "status",
+    "emotion": "positive",
+    "priority": 3,
+    "cooldown": 300,
+    "copyPool": [
+      "🗡 异常节点已清除，世界线趋于稳定",
+      "✨ 世界恢复了一部分秩序",
+      "🧯 潜在风险已被妥善处理"
+    ]
+  },
+  "BUG_REOPENED": {
+    "id": "BUG_REOPENED",
+    "source": "tapd",
+    "category": "status",
+    "emotion": "negative",
+    "priority": 4,
+    "cooldown": 900,
+    "copyPool": [
+      "☠ 异常节点重新活跃，但尚可控制",
+      "🔁 世界线出现回弹现象",
+      "🌀 稳定性受到轻微挑战"
+    ]
+  },
+  "STORY_ROLLBACK": {
+    "id": "STORY_ROLLBACK",
+    "emotion": "negative",
+    "priority": 4,
+    "copyPool": [
+      "🔄 世界线发生回溯，但未脱轨",
+      "🌀 剧情被调整，世界正在重新对齐"
+    ]
+  }
+}
