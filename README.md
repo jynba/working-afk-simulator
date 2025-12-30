@@ -1,3 +1,203 @@
+## 上班挂机模拟器（Working AFK Simulator）
+
+一个运行在桌面的 **Electron + Vue3 挂机小挂件**，通过与 TAPD 的「只读式」弱集成，把你每天面对的需求列表和状态变更，转译成更轻松的数值养成与情绪反馈。
+
+- **形态**：Windows / macOS 桌面挂件（Electron）
+- **数据来源**：TAPD 个人 Access Token（只读，不做考核）
+- **主要玩法**：
+  - 挂机累积等级、精力、贡献点等数值
+  - 将 TAPD 里的「我的需求」变成可领取的任务奖励
+  - 通过世界事件文案，给需求变更 / Bug 波动一个“宇宙解释”
+  - 搭配 Live2D 角色与角色商店，让工位更有陪伴感
+
+---
+
+## 功能概览
+
+- **桌面挂件 UI**
+
+  - 悬浮在桌面右下角，深色半透明，不抢主屏幕焦点
+  - 展示等级、精力、贡献点、挂机时长等核心数值
+  - 一键最小化为小圆点，需要时再展开
+
+- **TAPD 弱集成（只读）**
+
+  - 通过个人 Access Token 拉取「指派给我」的需求列表
+  - 支持预设 Workspace ID 或自定义填写 Workspace
+  - 只缓存 ID / 状态 / 时间，不上传到任何远程服务
+
+- **需求 → 游戏任务**
+
+  - 每条 Story 映射为一条「世界线任务」
+  - 按状态展示「预审通过 / 方案中 / 排期中 / 开发中 / 测试中…」等游戏化标签
+  - 满足条件时可点击「领取」，消耗掉该条 Story，换取游戏内贡献点与经验
+
+- **世界事件与情绪文案**
+
+  - 结合本地挂机时长与 TAPD 状态变化，生成世界事件
+  - 使用 `public/world-events.json` 配置文案池，保证所有提示低压、不焦虑
+  - 在挂件底部滚动展示「世界线轻微震荡」「异常节点已清除」等文案
+
+- **Live2D 角色与角色商店**
+  - 支持加载本地 Live2D `.model3.json` 模型，作为桌面陪伴角色
+  - 通过「贡献点」在角色商店中解锁不同角色与皮肤
+  - 角色会随鼠标移动视线，点击身体可触发动作
+
+---
+
+## 技术栈
+
+- **前端框架**：Vue 3 + `<script setup>`
+- **构建工具**：Vite
+- **桌面端**：Electron + `vite-plugin-electron`
+- **类型系统**：TypeScript
+- **图形与 Live2D**：`pixi.js` + `pixi-live2d-display`
+
+---
+
+## 快速开始
+
+### 1. 环境准备
+
+- **Node.js**：建议 ≥ 18
+- 包管理器：推荐使用 `pnpm`（也可以改成 `npm` / `yarn`，命令做相应替换）
+
+### 2. 安装依赖
+
+```bash
+pnpm install
+```
+
+### 3. 本地运行（开发模式）
+
+```bash
+pnpm dev
+```
+
+执行后会启动 Vite 开发服务器和 Electron 主进程，你可以在桌面看到一个挂件窗口。
+
+### 4. 打包桌面应用
+
+```bash
+pnpm build
+```
+
+`electron-builder` 会根据 `package.json` 中的配置，输出对应平台的安装包：
+
+- Windows：NSIS 安装包（带桌面快捷方式）
+- macOS：`dmg`
+- Linux：`AppImage`
+
+---
+
+## 项目目录结构（简要）
+
+```txt
+.
+├─ electron/                # Electron 主进程与 preload 脚本
+│  ├─ main.ts               # Electron 窗口创建、协议注册、secureStore 等
+│  └─ preload.ts            # 向 renderer 暴露 window.electronApi / shellApi / secureStoreApi
+├─ src/
+│  ├─ main.ts               # Vue 入口
+│  ├─ App.vue               # 桌面挂件主界面（等级、需求列表、事件文案等）
+│  ├─ components/
+│  │  ├─ Settings.vue       # 设置面板（TAPD 配置、Live2D 模型管理）
+│  │  ├─ Shop.vue           # 角色商店（用贡献点解锁角色）
+│  │  └─ Live2DViewer.vue   # Live2D 渲染与鼠标联动
+│  ├─ composables/
+│  │  ├─ useGame.ts         # 挂机数值逻辑（等级、经验、精力、贡献点）
+│  │  ├─ useTapd.ts         # TAPD 数据轮询与状态变更 Diff
+│  │  └─ useWorldEvents.ts  # 世界事件与文案生成
+│  ├─ services/
+│  │  ├─ tapd.ts            # 调用 TAPD Open API 的封装
+│  │  └─ worldEvents.ts     # 读取 world-events 配置，输出文案
+│  ├─ store.js              # 简单状态存储（角色商店、贡献点等）
+│  └─ style.css             # 全局样式
+├─ public/
+│  └─ world-events.json     # 世界事件与文案配置（示例配置）
+└─ dist-electron/           # 构建后 Electron 主进程代码
+```
+
+---
+
+## 配置与使用说明
+
+### 1. TAPD 接入（Settings 面板）
+
+在挂件右上角点击 **⚙ 设置**，进入 `Settings.vue` 对应的设置界面：
+
+- **TAPD Access Token**
+  - 在 TAPD 个人设置中生成（界面上有 🔗 快捷链接）
+  - 只读 Token，**仅保存在本地安全存储**，不上传服务器
+- **TAPD Workspace ID**
+  - 内置若干常用空间 ID，可下拉选择
+  - 也可选「其他」并手动输入 Workspace ID
+- **角色与用户名**
+  - 通过 `userRoleField` + `userName`，筛选指派给你的需求
+  - 与 `services/tapd.ts` 中请求逻辑一致，只取与你相关的 Story
+
+保存后会触发一次 `fetchData()`，立即刷新当前需求列表。
+
+### 2. 需求列表与领取逻辑
+
+在主挂件（`App.vue`）：
+
+- 上半部分展示：等级、精力、贡献点、经验条
+- 中间部分展示「📜 需求」列表：
+  - 从 TAPD 拉取的 Story 统一映射为 `TapdItem`
+  - 每条包含：`id`、`name`、`gamified_status`、`owner`、`is_claimable` 等
+  - 支持直接点击行打开对应 TAPD 页面（通过 `window.shellApi.openUrl`）
+  - 点击短 ID 会复制到剪贴板，方便在 TAPD 搜索
+- 若 `is_claimable === true`，会显示「领取」按钮：
+  - 点击后调用 `handleClaimReward`：一方面触发 `useGame().claimTaskReward()` 增加贡献点 / 经验
+  - 另一方面通过 `useTapd().claimStory()` 将该条 Story 移入「🏆 已领取」列表并本地持久化
+
+### 3. 世界事件与文案系统
+
+- `useTapd.ts` 中维护了一个 `statusChanges` 列表，记录 Bug / Story 的状态变化
+- `useWorldEvents.ts` 读取 `public/world-events.json` 等配置，根据事件类型与冷却时间，选取合适文案
+- 在 `App.vue` 底部 `footer` 中，优先展示 `latestEventMessage`，否则回落到 `gameState.statusText`
+- 所有文案均通过 JSON 配置维护，遵循 README 后半部分的「情绪权重与去噪」规则
+
+### 4. Live2D 模型导入与管理
+
+在设置面板：
+
+- 点击「导入 Live2D 模型」按钮，选择一个包含 `.model3.json` 的文件夹
+- Electron 主进程会通过自定义协议 `local-resource:///` 暴露本地路径，供 `Live2DViewer.vue` 加载
+- 最近使用的模型会出现在「历史模型」列表，可以：
+  - 点击切换当前模型
+  - 点击右侧 `×` 删除历史记录
+
+在 `App.vue` 中，`Live2DViewer` 组件常驻在右下角，根据鼠标位置更新视角与眼球参数，实现「跟随视线」效果。
+
+### 5. 角色商店与贡献点
+
+- `Shop.vue` 使用 `store.js` 提供的：`availableCharacters`、`getContributionPoints`、`purchaseCharacter` 等接口
+- 每个角色：
+  - 有预览图、名称、解锁所需贡献点及对应 Live2D 模型地址
+  - 若已购买显示「选择」，否则显示「购买」并在贡献点不足时禁用按钮
+- 购买成功后会触发 `select-character` 事件，更新全局模型 URL 并关闭商店
+
+---
+
+## 开发建议
+
+- 新增世界事件或文案时：
+  - 只需在 `public/world-events.json` 或对应 JSON 中追加配置，无需改动业务代码
+  - 避免直接在组件内部写死文案
+- 新增更多 TAPD 映射（如 Bug 列表）：
+  - 建议在 `services/tapd.ts` 中增加对应 API 调用
+  - 统一转换为 `TapdItem` 或扩展数据模型，再在 UI 中按产品设定映射
+- 若要接入除 TAPD 外的其它来源（如 Jira / 飞书）：
+  - 复用 `useWorldEvents` 与世界事件配置，只需增加新的 `source` 类型与映射逻辑
+
+---
+
+## 产品设定文档
+
+下面是本项目的完整产品 / 世界观 / 文案系统设定，供持续打磨玩法与文案时参考。
+
 # 《上班挂机模拟器》完整产品设定文档
 
 ---
@@ -374,237 +574,6 @@ TAPD 的「不可控性」被包装为世界事件。
 
 ---
 
-## 九、TAPD 接口最小调用清单（MVP）
-
-> 本章节用于 **Electron 桌面挂件版本** 的最小可行实现，仅覆盖「个人需求 + Bug 榜单 + 状态变更检测」，不涉及任何绩效、工时、他人数据。
-
----
-
-## 9.1 接入前置说明
-
-### 9.1.1 鉴权方式（推荐）
-
-- TAPD Open API
-- **Personal Token / Access Token**
-- 只读权限
-
-Electron 建议：
-
-- Token 存储在本地（加密 / keychain）
-- 不上传服务器
-
----
-
-## 9.2 API 基础配置
-
-```txt
-Base URL:
-https://api.tapd.cn
-
-Headers:
-Authorization: Bearer {ACCESS_TOKEN}
-Content-Type: application/json
-```
-
----
-
-## 9.3 接口一览（最小集）
-
-| 模块 | 接口         | 用途         |
-| ---- | ------------ | ------------ |
-| 用户 | 获取当前用户 | 获取 user_id |
-| Bug  | 查询我的 Bug | Bug 榜单     |
-| 需求 | 查询我的需求 | 需求榜单     |
-
----
-
-## 9.4 获取当前用户信息
-
-### 接口说明
-
-用于确认当前 Token 所属用户，仅调用一次即可缓存。
-
-### 请求
-
-```http
-GET /users/current
-```
-
-### 参数
-
-无
-
-### 示例返回
-
-```json
-{
-  "id": "123456",
-  "name": "张三",
-  "email": "zhangsan@company.com"
-}
-```
-
-前端仅需保存：
-
-```ts
-{
-  id, name;
-}
-```
-
----
-
-## 9.5 查询「指派给我的」Bug 列表
-
-### 接口说明
-
-用于生成 Bug 榜单，并检测状态变更。
-
-### 请求
-
-```http
-GET /bugs
-```
-
-### 请求参数（MVP）
-
-| 参数        | 说明      | 示例                           |
-| ----------- | --------- | ------------------------------ |
-| assigned_to | 指派人 ID | 123456                         |
-| limit       | 条数限制  | 50                             |
-| fields      | 返回字段  | id,title,status,updated_at,url |
-
-### 示例请求
-
-```http
-GET /bugs?assigned_to=123456&limit=50&fields=id,title,status,updated_at,url
-```
-
-### 示例返回
-
-```json
-[
-  {
-    "id": "BUG-101",
-    "title": "页面白屏",
-    "status": "已解决",
-    "updated_at": "2025-01-15T10:30:00",
-    "url": "https://tapd.cn/bug/BUG-101"
-  },
-  {
-    "id": "BUG-102",
-    "title": "按钮无响应",
-    "status": "新建",
-    "updated_at": "2025-01-15T09:20:00",
-    "url": "https://tapd.cn/bug/BUG-102"
-  }
-]
-```
-
----
-
-## 9.6 查询「指派给我的」需求（Story）列表
-
-### 接口说明
-
-用于生成需求榜单和需求状态分布。
-
-### 请求
-
-```http
-GET /stories
-```
-
-### 请求参数（MVP）
-
-| 参数        | 说明      | 示例                           |
-| ----------- | --------- | ------------------------------ |
-| assigned_to | 指派人 ID | 123456                         |
-| limit       | 条数限制  | 50                             |
-| fields      | 返回字段  | id,title,status,updated_at,url |
-
-### 示例请求
-
-```http
-GET /stories?assigned_to=123456&limit=50&fields=id,title,status,updated_at,url
-```
-
-### 示例返回
-
-```json
-[
-  {
-    "id": "STORY-201",
-    "title": "订单列表优化",
-    "status": "实现中",
-    "updated_at": "2025-01-15T11:00:00",
-    "url": "https://tapd.cn/story/STORY-201"
-  },
-  {
-    "id": "STORY-202",
-    "title": "国际化支持",
-    "status": "规划中",
-    "updated_at": "2025-01-14T17:45:00",
-    "url": "https://tapd.cn/story/STORY-202"
-  }
-]
-```
-
----
-
-## 9.7 前端统一数据模型（建议）
-
-```ts
-interface TapdItem {
-  id: string;
-  type: "bug" | "story";
-  status: string;
-  updatedAt: string;
-  url: string;
-}
-```
-
----
-
-## 9.8 状态变更检测（Diff 逻辑）
-
-### 本地缓存结构
-
-```ts
-Record<id, status>;
-```
-
-### Diff 示例
-
-```ts
-if (prev[item.id] && prev[item.id] !== item.status) {
-  triggerWorldEvent(item);
-}
-```
-
----
-
-## 9.9 轮询策略（Electron 推荐）
-
-| 项目     | 配置     |
-| -------- | -------- |
-| 轮询间隔 | 5 分钟   |
-| 前台     | 正常轮询 |
-| 后台     | 降频     |
-| 网络异常 | 静默失败 |
-
----
-
-## 9.10 明确不接入的 TAPD 接口
-
-- 工时 / 工时统计
-- 成员列表
-- 项目统计
-- 需求完成率
-- 任何管理视图接口
-
----
-
 ## 十、桌面挂件 UI 规格说明（Electron 版）
 
 > 本规格用于指导 **《上班挂机模拟器》桌面挂件** 的 UI 设计与实现，目标是： **常驻、不打扰、一眼即懂、随时可点。**
@@ -954,154 +923,6 @@ interface WorldEvent {
 ```ts
 generateCopy(eventType): string
 ```
-
----
-
-## 11.9 世界事件 & 文案 JSON 配置模板（工程用）
-
-> 本节提供**可直接用于代码中的 JSON 配置模板**，用于驱动世界事件系统与文案生成器。所有文案均通过配置维护，避免硬编码。
-
----
-
-### 11.9.1 世界事件定义（world-events.json）
-
-```json
-{
-  "BUG_CREATED": {
-    "id": "BUG_CREATED",
-    "source": "tapd",
-    "category": "status",
-    "emotion": "neutral",
-    "priority": 2,
-    "cooldown": 600,
-    "copyPool": ["🐞 检测到新的异常节点", "🧩 世界中出现了一些不稳定因素", "🛠 新的问题被世界感知到了"]
-  },
-
-  "BUG_FIXED": {
-    "id": "BUG_FIXED",
-    "source": "tapd",
-    "category": "status",
-    "emotion": "positive",
-    "priority": 3,
-    "cooldown": 300,
-    "copyPool": ["🗡 异常节点已清除，世界线趋于稳定", "✨ 世界恢复了一部分秩序", "🧯 潜在风险已被妥善处理"]
-  },
-
-  "BUG_REOPENED": {
-    "id": "BUG_REOPENED",
-    "source": "tapd",
-    "category": "status",
-    "emotion": "negative",
-    "priority": 4,
-    "cooldown": 900,
-    "copyPool": ["☠ 异常节点重新活跃，但尚可控制", "🔁 世界线出现回弹现象", "🌀 稳定性受到轻微挑战"]
-  }
-}
-```
-
-字段说明：
-
-- `emotion`：情绪权重（positive / neutral / negative，仅允许轻负向）
-- `priority`：事件优先级（聚合 > 状态 > 时间）
-- `cooldown`：同类事件最短触发间隔（秒）
-- `copyPool`：随机文案池
-
----
-
-### 11.9.2 需求世界事件定义（story-events.json）
-
-```json
-{
-  "STORY_CREATED": {
-    "emotion": "neutral",
-    "priority": 2,
-    "copyPool": ["📜 新的剧情分支被写入世界", "🧭 世界线新增了一个发展方向"]
-  },
-
-  "STORY_IN_PROGRESS": {
-    "emotion": "neutral",
-    "priority": 1,
-    "copyPool": ["⚙ 世界线正在稳定推进", "🛤 剧情执行中，一切按预期运转"]
-  },
-
-  "STORY_DONE": {
-    "emotion": "positive",
-    "priority": 3,
-    "copyPool": ["✨ 一个阶段的故事暂告段落", "📖 剧情节点顺利收束"]
-  },
-
-  "STORY_ROLLBACK": {
-    "emotion": "negative",
-    "priority": 4,
-    "copyPool": ["🔄 世界线发生回溯，但未脱轨", "🌀 剧情被调整，世界正在重新对齐"]
-  }
-}
-```
-
----
-
-### 11.9.3 时间类事件定义（time-events.json）
-
-```json
-{
-  "TIME_STABLE": {
-    "source": "time",
-    "emotion": "positive",
-    "priority": 0,
-    "trigger": "online_30m",
-    "copyPool": ["🟢 系统稳定运行中……", "🕰 时间正在缓慢流逝，一切如常"]
-  },
-
-  "TIME_LONG_SESSION": {
-    "emotion": "neutral",
-    "priority": 1,
-    "trigger": "online_2h",
-    "copyPool": ["🟡 长时间运行，注意能量消耗", "🔋 世界负载略高，但仍可持续"]
-  },
-
-  "TIME_OFFWORK": {
-    "emotion": "positive",
-    "priority": 5,
-    "trigger": "offwork",
-    "copyPool": ["🌙 世界进入低活跃状态", "🛌 挂机暂停，系统进入休眠模式"]
-  }
-}
-```
-
----
-
-### 11.9.4 聚合事件定义（aggregate-events.json）
-
-```json
-{
-  "REQUIREMENT_STORM": {
-    "condition": "story_change_count >= 3",
-    "emotion": "neutral",
-    "priority": 10,
-    "copyPool": ["🌪 世界线受到外部扰动，正在自适应", "🌀 多重变量叠加，系统短暂波动"]
-  },
-
-  "SYSTEM_UNSTABLE": {
-    "condition": "bug_reopen_count >= 2",
-    "emotion": "negative",
-    "priority": 10,
-    "copyPool": ["🧯 异常频发，但仍在安全阈值内", "⚠ 系统稳定性受到考验，但未失控"]
-  }
-}
-```
-
----
-
-### 11.9.5 文案生成器读取规则（示意）
-
-```ts
-function generateCopy(eventId) {
-  const event = eventConfig[eventId];
-  return randomPick(event.copyPool);
-}
-```
-
-> ❗UI 与业务逻辑 **不得直接拼接文案**，所有输出必须来自配置池。
 
 ---
 
