@@ -14,8 +14,14 @@
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
-      "package.json"
+      "package.json",
+      "!dist/**/*.map",
+      "!dist/**/builder-debug.yml",
+      "!dist/**/builder-effective-config.yaml",
+      "!dist/win-unpacked/**"
     ],
+    "extraFiles": [],
+    "extraResources": [],
     "mac": {
       "target": "dmg"
     },
@@ -24,12 +30,15 @@
       "icon": "build/icon.ico"
     },
     "nsis": {
-      "createDesktopShortcut": true
+      "createDesktopShortcut": true,
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     },
     "linux": {
       "target": "AppImage"
     },
-    "asar": false
+    "asar": true,
+    "asarUnpack": []
   },
   "dependencies": {
     "node-fetch": "^3.3.2",
