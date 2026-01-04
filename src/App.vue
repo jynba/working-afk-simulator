@@ -5,6 +5,7 @@ import { useTapd } from './composables/useTapd'
 import { useWorldEvents } from './composables/useWorldEvents'
 import Settings from './components/Settings.vue'
 import Shop from './components/Shop.vue'
+import Onboarding from './components/Onboarding.vue'
 import type { TapdItem } from './services/tapd'
 import Live2DViewer from './components/Live2DViewer.vue'
 
@@ -14,6 +15,7 @@ const inlineOpen = ref(true)
 const claimedOpen = ref(false) // State for the claimed list toggle
 const isMinimized = ref(false)
 const showShop = ref(false)
+const showOnboarding = ref(false)
 
 // --- Composables ---
 const { state: gameState, claimTaskReward } = useGame()
@@ -49,6 +51,11 @@ function updateModel(url: string) {
     modelHistory.value.unshift(url); // Add to the beginning of the list
     localStorage.setItem('live2d_model_history', JSON.stringify(modelHistory.value));
   }
+  
+  // Resize window if a model is loaded
+  if (url) {
+    window.windowApi?.resizeWindow(640, 270)
+  }
 }
 
 function handleModelChange(path: string) {
@@ -81,6 +88,8 @@ function handleRemoveModel(pathToRemove: string) {
     const defaultModel = '';
     modelUrl.value = defaultModel;
     localStorage.setItem('live2d_model_path', defaultModel);
+    // Resize back to default if model is removed
+    window.windowApi?.resizeWindow(440, 270)
   }
 }
 
@@ -93,8 +102,25 @@ function handleMouseMove(event: MouseEvent) {
   mouseY.value = event.clientY
 }
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener('mousemove', handleMouseMove)
+  
+  // Check if configuration exists
+  const config = await window.secureStoreApi.getTapdConfig()
+  
+  // For development testing or if config is missing
+  if (!config || !config.token || !config.workspaceId || !config.userName || showOnboarding.value) {
+    showOnboarding.value = true
+    // Resize window to accommodate the onboarding modal
+    window.windowApi?.resizeWindow(450, 365)
+  } else {
+    // Initial size based on model presence
+    if (modelUrl.value) {
+      window.windowApi?.resizeWindow(640, 270)
+    } else {
+      window.windowApi?.resizeWindow(440, 270)
+    }
+  }
 })
 
 onUnmounted(() => {
@@ -135,6 +161,16 @@ function closeShop() {
   showShop.value = false
 }
 
+function handleOnboardingFinish() {
+  if (modelUrl.value) {
+    window.windowApi?.resizeWindow(640, 270)
+  } else {
+    window.windowApi?.resizeWindow(440, 270) // Restore default size
+  }
+  showOnboarding.value = false
+  fetchData()
+}
+
 function handleSelectCharacter(modelUrl: string) {
   updateModel(modelUrl);
   closeShop(); // Close shop after selection
@@ -142,6 +178,19 @@ function handleSelectCharacter(modelUrl: string) {
 
 function toggleMinimize() {
   isMinimized.value = !isMinimized.value;
+  if (isMinimized.value) {
+    if (modelUrl.value) {
+      window.windowApi?.resizeWindow(240, 270, 'right')
+    } else {
+      window.windowApi?.resizeWindow(60, 60, 'right')
+    }
+  } else {
+    if (modelUrl.value) {
+      window.windowApi?.resizeWindow(640, 270, 'right')
+    } else {
+      window.windowApi?.resizeWindow(440, 270, 'right')
+    }
+  }
 }
 
 function toggleInline() {
@@ -204,11 +253,12 @@ function getStatusStyle(status: string) {
 
 <template>
   <Live2DViewer :modelUrl="modelUrl" :mouseX="mouseX" :mouseY="mouseY" class="live2d-background" />
-  <Shop v-if="showShop" @close="closeShop" @select-character="handleSelectCharacter" />
+  <Onboarding v-if="showOnboarding" @finish="handleOnboardingFinish" />
+  <Shop v-else-if="showShop" @close="closeShop" @select-character="handleSelectCharacter" :has-model="!!modelUrl" />
   <Settings v-else-if="showSettings" @close="closeSettings" @save-and-close="saveAndCloseSettings"
     @model-changed="handleModelChange" :model-history="modelHistory" @switch-model="handleSwitchModel"
-    @remove-model="handleRemoveModel" />
-  <div v-else class="widget-container" :class="{ 'minimized': isMinimized }">
+    @remove-model="handleRemoveModel" :has-model="!!modelUrl" />
+  <div v-else class="widget-container" :class="{ 'minimized': isMinimized, 'with-model': !!modelUrl }">
     <header class="header">
       <div class="title" @click="isMinimized && toggleMinimize()">
         <span>Lv.{{ gameState.level }}</span>
@@ -285,7 +335,6 @@ function getStatusStyle(status: string) {
   display: flex;
   flex-direction: column;
   position: fixed;
-  right: 210px;
   /* Positioned to the left of the Live2D character */
   bottom: 0px;
   width: 425px;
@@ -303,7 +352,6 @@ function getStatusStyle(status: string) {
 }
 
 .widget-container.minimized {
-  right: 190px;
   /* Position at the character's left edge */
   top: 0px;
   /* Position near the character's top edge */
@@ -322,6 +370,14 @@ function getStatusStyle(status: string) {
   align-items: center;
   justify-content: center;
   -webkit-app-region: no-drag;
+}
+
+.widget-container.with-model {
+  right: 210px;
+}
+
+.widget-container.with-model.minimized {
+  right: 190px;
 }
 
 .widget-container.minimized .header .title {

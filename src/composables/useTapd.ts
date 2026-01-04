@@ -60,7 +60,7 @@ async function fetchData() {
 
     workspaceId.value = config.workspaceId || null
 
-    const newItems = await fetchMyTapdData()
+    const newItems: any[] = await fetchMyTapdData()
     const newItemIds = new Set(newItems.map(item => item.id))
 
     // --- Sync and Validate Claimed Stories --- //

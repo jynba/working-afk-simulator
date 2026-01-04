@@ -32,7 +32,7 @@ let win: BrowserWindow | null
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 640,
+    width: 440,
     height: 270,
     frame: false,
     alwaysOnTop: true,
@@ -130,9 +130,15 @@ ipcMain.on('show-notification', (_event, { title, body }) => {
 });
 
 // --- IPC Handlers ---
-ipcMain.on('resize-window', (_event, { width, height }) => {
+ipcMain.on('resize-window', (_event, { width, height, horizontalAlign }) => {
   if (win) {
-    win.setBounds({ width, height }, true) // `true` enables animation
+    if (horizontalAlign === 'right') {
+      const bounds = win.getBounds()
+      const newX = bounds.x + (bounds.width - width)
+      win.setBounds({ x: newX, y: bounds.y, width, height }, true)
+    } else {
+      win.setBounds({ width, height }, true) // `true` enables animation
+    }
   }
 })
 

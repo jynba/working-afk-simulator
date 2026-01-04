@@ -5,6 +5,10 @@ defineProps({
   modelHistory: {
     type: Array as () => string[],
     default: () => []
+  },
+  hasModel: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -107,7 +111,7 @@ watch(workspaceId, (newVal) => {
 </script>
 
 <template>
-  <div class="settings-container">
+  <div class="settings-container" :class="{ 'with-model': hasModel }">
     <header class="settings-header">
       <h3>设置</h3>
       <button @click="$emit('close')" class="close-btn">×</button>
@@ -167,7 +171,6 @@ watch(workspaceId, (newVal) => {
   display: flex;
   flex-direction: column;
   position: fixed;
-  right: 210px;
   bottom: 0px;
   width: 425px;
   height: 95%;
@@ -180,6 +183,11 @@ watch(workspaceId, (newVal) => {
   z-index: 200;
   -webkit-app-region: drag;
   /* Ensure settings are on top */
+  transition: right 0.3s ease;
+}
+
+.settings-container.with-model {
+  right: 210px;
 }
 
 .settings-header {

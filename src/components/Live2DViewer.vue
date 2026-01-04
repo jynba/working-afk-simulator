@@ -93,8 +93,13 @@ onUnmounted(() => {
 });
 
 watch(() => props.modelUrl, (newUrl) => {
-  if (newUrl && app) {
-    loadModel(newUrl);
+  if (app) {
+    if (newUrl) {
+      loadModel(newUrl);
+    } else {
+      app.stage.removeChildren();
+      live2dModel = null;
+    }
   }
 });
 

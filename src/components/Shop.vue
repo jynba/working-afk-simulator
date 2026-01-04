@@ -8,6 +8,13 @@ const {
   purchaseCharacter
 } = useStore();
 
+const props = defineProps({
+  hasModel: {
+    type: Boolean,
+    default: false
+  }
+})
+
 const emit = defineEmits(['close', 'select-character']);
 
 function handlePurchase(character) {
@@ -24,7 +31,7 @@ function handleSelect(character) {
 </script>
 
 <template>
-  <div class="shop-container">
+  <div class="shop-container" :class="{ 'with-model': hasModel }">
     <header class="shop-header">
       <h3>角色商店</h3>
       <button @click="$emit('close')" class="close-btn">×</button>
@@ -62,7 +69,6 @@ function handleSelect(character) {
   display: flex;
   flex-direction: column;
   position: fixed;
-  right: 210px;
   bottom: 0px;
   width: 425px;
   height: 95%;
@@ -74,6 +80,11 @@ function handleSelect(character) {
   border-radius: 8px;
   z-index: 200;
   -webkit-app-region: drag;
+  transition: right 0.3s ease;
+}
+
+.shop-container.with-model {
+  right: 210px;
 }
 
 .shop-header {

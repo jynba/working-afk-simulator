@@ -2,11 +2,11 @@ import { ipcRenderer, contextBridge } from 'electron'
 
 // --- Window API ---
 export interface IWindowApi {
-  resizeWindow: (width: number, height: number) => void
+  resizeWindow: (width: number, height: number, horizontalAlign?: 'left' | 'right') => void
 }
 
 const windowApi: IWindowApi = {
-  resizeWindow: (width, height) => ipcRenderer.send('resize-window', { width, height }),
+  resizeWindow: (width, height, horizontalAlign) => ipcRenderer.send('resize-window', { width, height, horizontalAlign }),
 }
 
 contextBridge.exposeInMainWorld('windowApi', windowApi)
