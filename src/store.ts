@@ -5,7 +5,15 @@ import { useGame } from './composables/useGame';
 const { state: gameState, spendContribution } = useGame();
 
 // Character data (could be fetched from server/config later)
-const defaultCharacters = [
+interface Character {
+  id: number;
+  name: string;
+  cost: number;
+  modelUrl: string;
+  preview: string;
+}
+
+const defaultCharacters: Character[] = [
   {
     id: 4,
     name: 'Hamster',
@@ -15,26 +23,31 @@ const defaultCharacters = [
   },
 ];
 
+
 const PURCHASED_KEY = 'afk_purchased_chars';
 
-function loadPurchased() {
+function loadPurchased(): number[] {
   try {
-    const saved = JSON.parse(localStorage.getItem(PURCHASED_KEY));
+    const savedStr = localStorage.getItem(PURCHASED_KEY);
+    if (!savedStr) return [];
+    const saved = JSON.parse(savedStr);
     if (Array.isArray(saved) && saved.length) return saved;
   } catch (_) { }
   return []; // No default characters
 }
 
-function persistPurchased(ids) {
+function persistPurchased(ids: number[]) {
   localStorage.setItem(PURCHASED_KEY, JSON.stringify(ids));
 }
 
+
 // Reactive state (only purchased list lives here; contribution comes from gameState)
 const store = reactive({
-  characters: defaultCharacters,
-  purchasedCharacterIds: loadPurchased(),
+  characters: defaultCharacters as Character[],
+  purchasedCharacterIds: loadPurchased() as number[],
   isLoadingCharacters: false,
 });
+
 
 // Actions
 const actions = {
@@ -69,7 +82,7 @@ const actions = {
     }
   },
 
-  purchaseCharacter(characterId) {
+  purchaseCharacter(characterId: number) {
     const char = store.characters.find(c => c.id === characterId);
     if (!char) return false;
     if (store.purchasedCharacterIds.includes(characterId)) return false;
@@ -87,7 +100,7 @@ const actions = {
 const getters = {
   availableCharacters: computed(() => store.characters),
   purchasedCharacters: computed(() => store.characters.filter(c => store.purchasedCharacterIds.includes(c.id))),
-  isPurchased: (id) => store.purchasedCharacterIds.includes(id),
+  isPurchased: (id: number) => store.purchasedCharacterIds.includes(id),
   getContributionPoints: computed(() => gameState.contribution),
   isLoadingCharacters: computed(() => store.isLoadingCharacters),
 };
