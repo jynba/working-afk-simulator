@@ -175,16 +175,22 @@ function handleSelect(character) {
 }
 
 .character-name {
-  margin: 0 0 2px 0;
+  margin: 0;
   font-size: 12px;
   color: #e0e0e0;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
 }
 
 .character-cost {
-  margin: 0;
+  margin: 0 0 0 4px;
   font-size: 10px;
   color: #f0c43a;
+  white-space: nowrap;
+  flex-shrink: 0;
   /* Gold color for cost */
 }
 

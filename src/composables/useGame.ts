@@ -21,7 +21,7 @@ const state = reactive<PlayerState>({
   xpForNextLevel: 100,
   energy: 100,
   focus: 100,
-  contribution: 0,
+  contribution: 6000,
   onlineTimeInSeconds: 0,
   statusText: '🟢 稳定监控中',
 })

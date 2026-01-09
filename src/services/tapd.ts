@@ -12,8 +12,6 @@ export interface TapdItem {
 
 // --- Gamification Logic ---
 
-const claimableStatuses = ['已提测', '测试中']
-
 /**
  * Translates a standard TAPD status into a more thematic, gamified version.
  * @param status The original status string from TAPD.
@@ -25,6 +23,7 @@ function gamifyStatus(status: string): string {
       return '📖预审通过'
     case '方案中':
       return '📘方案中'
+    
     case '排期中':
       return '🧭排期中'
     case '开发中':
@@ -33,6 +32,8 @@ function gamifyStatus(status: string): string {
       return '✅已提测'
     case '测试中':
       return '🔬测试中'
+    case '已测完':
+      return '✅已测完'
     default:
       return status // Fallback to the original status if no match is found
   }
@@ -47,7 +48,7 @@ const API_BASE_URL = 'https://api.tapd.cn'
  * @returns A promise that resolves to a list of TapdItems.
  */
 export async function fetchMyTapdData(): Promise<TapdItem[]> {
-  const { token, workspaceId, userName = '' } = await window.secureStoreApi.getTapdConfig()
+  const { token, workspaceId, userName = '', userRoleField } = await window.secureStoreApi.getTapdConfig()
 
   if (!token) {
     console.warn('TAPD token not set. Skipping API fetch.')
@@ -77,12 +78,29 @@ export async function fetchMyTapdData(): Promise<TapdItem[]> {
     const statusesToFetch = [
       '方案中',
       '预审通过',
+      '待正式评审',
+      '技术方案中',
       '排期中',
       '开发中',
       '已提测',
       '测试中',
+      '已测完'
     ].join('|')
-    const { userRoleField } = await window.secureStoreApi.getTapdConfig()
+    
+    // Determine claimable statuses based on role
+    let localClaimableStatuses: string[] = []
+    
+    if (userRoleField === 'custom_field_9') {
+      // Product Manager
+      localClaimableStatuses = ['排期中', '开发中', '已提测', '测试中', '已测完']
+    } else if (userRoleField === 'custom_field_10') {
+      // Tester
+      localClaimableStatuses = ['已测完']
+    } else {
+      // Developer (default)
+      localClaimableStatuses = ['已提测', '测试中','已测完']
+    }
+
     const ownerParam = userName && userRoleField ? `&${userRoleField}=${userName}` : ''
 
     console.log(ownerParam, 'ownerParam');
@@ -100,12 +118,12 @@ export async function fetchMyTapdData(): Promise<TapdItem[]> {
       return {
         ...story,
         gamified_status: gamifyStatus(story.v_status),
-        is_claimable: claimableStatuses.includes(story.v_status),
+        is_claimable: localClaimableStatuses.includes(story.v_status),
       }
     })
 
     // Sort stories: claimable ones first, then by status order
-    const statusOrder = ['已提测', '测试中', '开发中', '排期中', '预审通过', '方案中']
+    const statusOrder = ['已提测', '测试中','已测完', '开发中', '排期中','待正式评审','技术方案中', '预审通过', '方案中',]
     stories.sort((a, b) => {
       if (a.is_claimable && !b.is_claimable) return -1
       if (!a.is_claimable && b.is_claimable) return 1

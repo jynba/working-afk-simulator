@@ -3,6 +3,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useGame } from './composables/useGame'
 import { useTapd } from './composables/useTapd'
 import { useWorldEvents } from './composables/useWorldEvents'
+import { useStore } from './store'
 import Settings from './components/Settings.vue'
 import Shop from './components/Shop.vue'
 import Onboarding from './components/Onboarding.vue'
@@ -21,6 +22,7 @@ const showOnboarding = ref(false)
 const { state: gameState, claimTaskReward } = useGame()
 const { state: tapdState, storyCount, stories, claimedStories, workspaceId, fetchData, claimStory } = useTapd()
 const { latestEventMessage } = useWorldEvents()
+const { fetchCharacters } = useStore()
 
 const modelHistory = ref<string[]>([]);
 
@@ -103,6 +105,7 @@ function handleMouseMove(event: MouseEvent) {
 }
 
 onMounted(async () => {
+  fetchCharacters()
   window.addEventListener('mousemove', handleMouseMove)
   
   // Check if configuration exists
