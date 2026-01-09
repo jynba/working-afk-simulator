@@ -16,7 +16,6 @@ const defaultCharacters = [
 ];
 
 const PURCHASED_KEY = 'afk_purchased_chars';
-const CHARACTERS_URL = 'https://fastly.jsdelivr.net/gh/jynba/live2d-assets@latest/characters.json'; // Example URL
 
 function loadPurchased() {
   try {
@@ -43,16 +42,28 @@ const actions = {
     if (store.isLoadingCharacters) return;
     store.isLoadingCharacters = true;
     try {
-      const response = await fetch(CHARACTERS_URL);
-      if (!response.ok) throw new Error('Network response was not ok');
+      // Get latest release tag from GitHub API
+      const latestRelease = await fetch("https://api.github.com/repos/jynba/live2d-assets/releases/latest")
+        .then(res => {
+          if (!res.ok) throw new Error('GitHub API error');
+          return res.json();
+        });
+
+      const tag = latestRelease.tag_name;
+      // Using raw.githubusercontent.com as requested
+      const url = `https://raw.githubusercontent.com/jynba/live2d-assets/${tag}/characters.json`;
+
+      console.log('Fetching characters from latest release tag:', tag);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch characters.json from release');
+
       const data = await response.json();
       if (Array.isArray(data) && data.length > 0) {
         store.characters = data;
-        console.log('Characters loaded dynamically:', data);
+        console.log('Characters loaded dynamically from release:', tag);
       }
     } catch (error) {
-       console.warn('Failed to fetch characters, using defaults:', error);
-       // Fallback is already set initally
+      console.warn('Failed to fetch characters from release, using defaults:', error);
     } finally {
       store.isLoadingCharacters = false;
     }
