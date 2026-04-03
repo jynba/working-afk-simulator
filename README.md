@@ -1,6 +1,7 @@
 ## 上班挂机模拟器（Working AFK Simulator）
 
 一个运行在桌面的 **Electron + Vue3 挂机小挂件**，通过与 TAPD 的「只读式」弱集成，把你每天面对的需求列表和状态变更，转译成更轻松的数值养成与情绪反馈。
+![PixPin_2026-04-03_14-25-24](https://github.com/user-attachments/assets/9672f8ce-9f87-490e-aaaa-3152480edfb5)
 
 - **形态**：Windows / macOS 桌面挂件（Electron）
 - **数据来源**：TAPD 个人 Access Token（只读，不做考核）
