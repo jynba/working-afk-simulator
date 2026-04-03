@@ -1,5 +1,6 @@
 import { reactive, onMounted, onUnmounted, readonly, computed, ref } from 'vue'
 import { fetchMyTapdData, type TapdItem } from '../services/tapd'
+import { getTapdConfig, hasElectronIpc } from '../utils/platformBridge'
 
 // Represents a single detected status change.
 export interface StatusChange {
@@ -55,10 +56,16 @@ async function fetchData() {
   state.isLoading = true
   state.error = null
   try {
-    const config = await window.secureStoreApi.getTapdConfig()
+    const config = await getTapdConfig()
     console.log(config, 'config');
 
     workspaceId.value = config.workspaceId || null
+
+    if (config.token && !hasElectronIpc()) {
+      state.items = []
+      state.error = '当前是浏览器预览环境，TAPD 同步仅在 Electron 桌面应用中可用。'
+      return
+    }
 
     const newItems: any[] = await fetchMyTapdData()
     const newItemIds = new Set(newItems.map(item => item.id))

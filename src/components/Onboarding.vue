@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
+import { setTapdConfig, openExternalUrl } from '../utils/platformBridge'
 
 const emit = defineEmits(['finish'])
 
@@ -56,7 +57,7 @@ async function finish() {
     }
     
     try {
-      await window.secureStoreApi.setTapdConfig(configToSave)
+      await setTapdConfig(configToSave)
       emit('finish')
     } catch (e) {
       console.error('Failed to save config:', e)
@@ -65,7 +66,7 @@ async function finish() {
 }
 
 function openTapdTokenUrl() {
-  window.shellApi.openUrl('https://www.tapd.cn/personal_settings/index?tab=personal_token');
+  openExternalUrl('https://www.tapd.cn/personal_settings/index?tab=personal_token');
 }
 
 watch(workspaceId, (newVal) => {

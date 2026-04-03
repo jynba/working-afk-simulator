@@ -20,12 +20,12 @@ export interface ITapdConfig {
 }
 
 export interface ISecureStoreApi {
-  setTapdConfig: (config: { token: string; userName: string; workspaceId: string; userRoleField: string }) => void
+  setTapdConfig: (config: { token: string; userName: string; workspaceId: string; userRoleField: string }) => Promise<void>
   getTapdConfig: () => Promise<ITapdConfig>
 }
 
 const secureStoreApi: ISecureStoreApi = {
-  setTapdConfig: (config) => ipcRenderer.send('set-tapd-config', config),
+  setTapdConfig: (config) => ipcRenderer.invoke('set-tapd-config', config),
   getTapdConfig: () => ipcRenderer.invoke('get-tapd-config'),
 }
 
@@ -54,4 +54,3 @@ contextBridge.exposeInMainWorld('electronApi', electronApi)
 contextBridge.exposeInMainWorld('ipcRenderer', {
   invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args),
 })
-

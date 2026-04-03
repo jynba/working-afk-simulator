@@ -1,11 +1,11 @@
-import { app, BrowserWindow, ipcMain, safeStorage, shell, dialog, protocol, Notification } from 'electron'
-import * as dotenv from 'dotenv'
-
+import dotenv from 'dotenv'
 dotenv.config()
 import fetch from 'node-fetch'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import { app, BrowserWindow, ipcMain, safeStorage, shell, dialog, protocol, Notification } from 'electron'
+import type { WebContents } from 'electron'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -28,7 +28,13 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
 
-let win: BrowserWindow | null
+type ElectronProtocolRequest = { url: string }
+type ElectronProtocolCallback = (response: { path?: string; error?: number }) => void
+type NotificationPayload = { title: string; body: string }
+type ResizePayload = { width: number; height: number; horizontalAlign?: 'left' | 'right' }
+type TapdConfigPayload = { token: string; userName: string; workspaceId: string; userRoleField: string }
+
+let win: InstanceType<typeof BrowserWindow> | null
 
 function createWindow() {
   win = new BrowserWindow({
@@ -41,7 +47,10 @@ function createWindow() {
     transparent: true,
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
+      preload: path.join(__dirname, 'preload.cjs'),
+      contextIsolation: true,
+      sandbox: false,
+      nodeIntegration: false,
     },
   })
 
@@ -54,8 +63,8 @@ function createWindow() {
   }
 }
 
-app.on('web-contents-created', (_event, contents) => {
-  contents.on('will-navigate', (event) => {
+app.on('web-contents-created', (_event: unknown, contents: WebContents) => {
+  contents.on('will-navigate', (event: { preventDefault: () => void }) => {
     event.preventDefault()
   })
   contents.setWindowOpenHandler(() => {
@@ -82,7 +91,7 @@ app.on('activate', () => {
 })
 
 app.whenReady().then(() => {
-  protocol.registerFileProtocol('local-resource', (request, callback) => {
+  protocol.registerFileProtocol('local-resource', (request: ElectronProtocolRequest, callback: ElectronProtocolCallback) => {
     const url = request.url.replace(/^local-resource:\/\/\/?/, '');
     try {
       const decodedUrl = decodeURIComponent(url);
@@ -125,12 +134,12 @@ app.whenReady().then(() => {
   })
 })
 
-ipcMain.on('show-notification', (_event, { title, body }) => {
+ipcMain.on('show-notification', (_event: unknown, { title, body }: NotificationPayload) => {
   new Notification({ title, body }).show();
 });
 
 // --- IPC Handlers ---
-ipcMain.on('resize-window', (_event, { width, height, horizontalAlign }) => {
+ipcMain.on('resize-window', (_event: unknown, { width, height, horizontalAlign }: ResizePayload) => {
   if (win) {
     if (horizontalAlign === 'right') {
       const bounds = win.getBounds()
@@ -145,10 +154,10 @@ ipcMain.on('resize-window', (_event, { width, height, horizontalAlign }) => {
 // --- Secure Store Handlers ---
 const configPath = path.join(app.getPath('userData'), 'config.json')
 
-ipcMain.on('set-tapd-config', (_event, config: { token: string; userName: string; workspaceId: string; userRoleField: string }) => {
+ipcMain.handle('set-tapd-config', async (_event: unknown, config: TapdConfigPayload) => {
   if (!safeStorage.isEncryptionAvailable()) {
     console.error('Safe storage is not available.')
-    return
+    throw new Error('Safe storage is not available.')
   }
   try {
     const encryptedToken = config.token ? safeStorage.encryptString(config.token) : null
@@ -161,17 +170,18 @@ ipcMain.on('set-tapd-config', (_event, config: { token: string; userName: string
     require('node:fs').writeFileSync(configPath, JSON.stringify(newConfig))
   } catch (error) {
     console.error('Failed to save config:', error)
+    throw error
   }
 })
 
-ipcMain.on('open-url', (_event, url: string) => {
+ipcMain.on('open-url', (_event: unknown, url: string) => {
   // Security: Ensure the URL is a valid TAPD URL before opening.
   if (url && url.includes('tapd.cn')) {
     shell.openExternal(url)
   }
 })
 
-ipcMain.handle('fetch-tapd', async (_event, url, options) => {
+ipcMain.handle('fetch-tapd', async (_event: unknown, url: string, options: any) => {
   try {
     const response = await fetch(url, options)
 

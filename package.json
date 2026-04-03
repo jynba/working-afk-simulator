@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "pnpm run dev:electron",
+    "dev:electron": "env -u ELECTRON_RUN_AS_NODE vite",
+    "dev:web": "vite --config vite.web.config.ts",
     "build": "vite build && electron-builder",
     "preview": "vite preview"
   },
@@ -41,6 +43,7 @@
     "asarUnpack": []
   },
   "dependencies": {
+    "dotenv": "^17.3.1",
     "node-fetch": "^3.3.2",
     "pixi-live2d-display": "^0.4.0",
     "pixi.js": "^8.14.3",

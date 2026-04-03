@@ -9,6 +9,7 @@ import Shop from './components/Shop.vue'
 import Onboarding from './components/Onboarding.vue'
 import type { TapdItem } from './services/tapd'
 import Live2DViewer from './components/Live2DViewer.vue'
+import { getTapdConfig, openExternalUrl, showNotification } from './utils/platformBridge'
 
 // --- State ---
 const showSettings = ref(false)
@@ -66,12 +67,7 @@ function handleModelChange(path: string) {
   const url = `local-resource:///${formattedPath}`;
   updateModel(url);
 
-  if (window.electronApi) {
-    window.electronApi.showNotification({
-      title: '导入成功',
-      body: 'Live2D 模型已成功加载。'
-    });
-  }
+  showNotification('导入成功', 'Live2D 模型已成功加载。')
 }
 
 function handleSwitchModel(url: string) {
@@ -109,7 +105,7 @@ onMounted(async () => {
   window.addEventListener('mousemove', handleMouseMove)
   
   // Check if configuration exists
-  const config = await window.secureStoreApi.getTapdConfig()
+  const config = await getTapdConfig()
   
   // For development testing or if config is missing
   if (!config || !config.token || !config.workspaceId || !config.userName || showOnboarding.value) {
@@ -209,7 +205,7 @@ function openStoryDetail(story: TapdItem) {
   const url = `https://www.tapd.cn/tapd_fe/${workspaceId.value}/story/detail/${story.id}`
   console.log('Generated URL:', url)
   try {
-    window.shellApi.openUrl(url)
+    openExternalUrl(url)
     console.log('shellApi.openUrl called successfully.')
   } catch (error) {
     console.error('Failed to open URL via shellApi:', error)

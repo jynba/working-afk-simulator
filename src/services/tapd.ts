@@ -1,3 +1,5 @@
+import { getTapdConfig, ipcInvoke, hasElectronIpc } from '../utils/platformBridge'
+
 // Defines the unified data structure for items fetched from TAPD.
 export interface TapdItem {
   id: string
@@ -48,11 +50,16 @@ const API_BASE_URL = 'https://api.tapd.cn'
  * @returns A promise that resolves to a list of TapdItems.
  */
 export async function fetchMyTapdData(): Promise<TapdItem[]> {
-  const { token, workspaceId, userName = '', userRoleField } = await window.secureStoreApi.getTapdConfig()
+  const { token, workspaceId, userName = '', userRoleField } = await getTapdConfig()
 
   if (!token) {
     console.warn('TAPD token not set. Skipping API fetch.')
     return [] // Return empty array if no token is configured
+  }
+
+  if (!hasElectronIpc()) {
+    console.warn('TAPD fetch is unavailable outside Electron.')
+    return []
   }
 
   // Log a masked version of the token for debugging purposes
@@ -67,7 +74,7 @@ export async function fetchMyTapdData(): Promise<TapdItem[]> {
   try {
     // Helper to make requests via IPC
     async function ipcFetch(url: string, options: any) {
-      const result = await window.ipcRenderer.invoke('fetch-tapd', url, options)
+      const result = await ipcInvoke<{ error?: string; data?: any }>('fetch-tapd', url, options)
       if (result.error) {
         throw new Error(result.error)
       }

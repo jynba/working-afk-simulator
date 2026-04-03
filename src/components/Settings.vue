@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { getTapdConfig, setTapdConfig, showNotification, openFileDialog, openExternalUrl } from '../utils/platformBridge'
 
 defineProps({
   modelHistory: {
@@ -34,7 +35,7 @@ function getModelName(path: string) {
 const modelPath = ref('')
 
 async function importModel() {
-  const path = await window.electronApi.openFileDialog()
+  const path = await openFileDialog()
   if (path) {
     modelPath.value = path
     emit('model-changed', path)
@@ -65,7 +66,7 @@ const roleOptions = [
 
 // When the component is mounted, try to load the existing config.
 onMounted(async () => {
-  const originalConfig = await window.secureStoreApi.getTapdConfig();
+  const originalConfig = await getTapdConfig();
   if (originalConfig) {
     const config = JSON.parse(JSON.stringify(originalConfig));
     apiToken.value = config.token || '';
@@ -86,23 +87,25 @@ onMounted(async () => {
 })
 
 async function openTapdTokenUrl() {
-  window.shellApi.openUrl('https://www.tapd.cn/personal_settings/index?tab=personal_token');
+  openExternalUrl('https://www.tapd.cn/personal_settings/index?tab=personal_token');
 }
 
 async function saveSettings() {
-  if (!apiToken.value || !workspaceId.value || !userName.value) {
-    window.electronApi.showNotification({ title: '保存失败', body: '请填写所有必填项：TAPD Access Token, TAPD Workspace ID, and TAPD User Name.' });
-    return;
+  const finalWorkspaceId = workspaceId.value === 'other' ? customWorkspaceId.value.trim() : workspaceId.value.trim()
+
+  if (!apiToken.value.trim() || !finalWorkspaceId || !userName.value.trim()) {
+    showNotification('保存失败', '请填写所有必填项：TAPD Access Token、TAPD Workspace ID 和 TAPD User Name。')
+    return
   }
-  const finalWorkspaceId = workspaceId.value === 'other' ? customWorkspaceId.value : workspaceId.value;
+
   const configToSave = {
-    token: apiToken.value,
-    userName: userName.value,
+    token: apiToken.value.trim(),
+    userName: userName.value.trim(),
     workspaceId: finalWorkspaceId,
     userRoleField: userRoleField.value,
   }
   console.log('Saving config from Settings.vue:', configToSave)
-  window.secureStoreApi.setTapdConfig(configToSave)
+  await setTapdConfig(configToSave)
   emit('save-and-close')
 }
 watch(workspaceId, (newVal) => {
@@ -181,9 +184,9 @@ watch(workspaceId, (newVal) => {
   background-color: rgba(36, 36, 36, 0.85);
   border-radius: 8px;
   z-index: 200;
-  -webkit-app-region: drag;
   /* Ensure settings are on top */
   transition: right 0.3s ease;
+  -webkit-app-region: no-drag;
 }
 
 .settings-container.with-model {
@@ -197,7 +200,7 @@ watch(workspaceId, (newVal) => {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 16px;
   padding: 0px 8px 8px 8px;
-
+  -webkit-app-region: drag;
 }
 
 .settings-header h3 {
@@ -266,6 +269,7 @@ watch(workspaceId, (newVal) => {
   padding-top: 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding: 8px 8px;
+  -webkit-app-region: no-drag;
 }
 
 .save-btn {

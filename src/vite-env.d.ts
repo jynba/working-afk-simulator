@@ -20,7 +20,7 @@ interface Window {
     showNotification: (args: { title: string; body: string }) => void;
   };
   secureStoreApi: {
-    setTapdConfig: (config: any) => void;
+    setTapdConfig: (config: any) => Promise<void>;
     getTapdConfig: () => Promise<any>;
   };
   shellApi: {

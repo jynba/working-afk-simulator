@@ -13,6 +13,14 @@ interface Character {
   preview: string;
 }
 
+const CHARACTERS_CACHE_KEY = 'afk_characters_cache_v1';
+const CHARACTERS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const CHARACTER_SOURCE_URLS = [
+  'https://fastly.jsdelivr.net/gh/jynba/live2d-assets@latest/characters.json',
+  'https://cdn.jsdelivr.net/gh/jynba/live2d-assets@latest/characters.json',
+  'https://raw.githubusercontent.com/jynba/live2d-assets/main/characters.json',
+];
+
 const defaultCharacters: Character[] = [
   {
     id: 4,
@@ -25,6 +33,98 @@ const defaultCharacters: Character[] = [
 
 
 const PURCHASED_KEY = 'afk_purchased_chars';
+
+function normalizeAssetUrl(url: string): string {
+  return url.replace(
+    /^https:\/\/raw\.githubusercontent\.com\/jynba\/live2d-assets\/([^/]+)\/(.+)$/i,
+    'https://fastly.jsdelivr.net/gh/jynba/live2d-assets@$1/$2'
+  );
+}
+
+function normalizeCharacter(character: Character): Character {
+  return {
+    ...character,
+    modelUrl: normalizeAssetUrl(character.modelUrl),
+    preview: normalizeAssetUrl(character.preview),
+  };
+}
+
+function isValidCharacter(character: unknown): character is Character {
+  if (!character || typeof character !== 'object') return false;
+
+  const candidate = character as Record<string, unknown>;
+  return typeof candidate.id === 'number'
+    && typeof candidate.name === 'string'
+    && typeof candidate.cost === 'number'
+    && typeof candidate.modelUrl === 'string'
+    && typeof candidate.preview === 'string';
+}
+
+function saveCharactersCache(characters: Character[]) {
+  localStorage.setItem(CHARACTERS_CACHE_KEY, JSON.stringify({
+    fetchedAt: Date.now(),
+    characters,
+  }));
+}
+
+function loadCharactersCache(): Character[] | null {
+  try {
+    const savedStr = localStorage.getItem(CHARACTERS_CACHE_KEY);
+    if (!savedStr) return null;
+
+    const saved = JSON.parse(savedStr) as {
+      fetchedAt?: number;
+      characters?: unknown;
+    };
+
+    if (!saved.fetchedAt || Date.now() - saved.fetchedAt > CHARACTERS_CACHE_TTL_MS) {
+      return null;
+    }
+
+    if (!Array.isArray(saved.characters)) return null;
+
+    const characters = saved.characters
+      .filter(isValidCharacter)
+      .map(normalizeCharacter);
+
+    return characters.length > 0 ? characters : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function fetchCharacterList(): Promise<Character[]> {
+  for (const url of CHARACTER_SOURCE_URLS) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Request failed with ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (!Array.isArray(data)) {
+        throw new Error('characters.json is not an array');
+      }
+
+      const characters = data
+        .filter(isValidCharacter)
+        .map(normalizeCharacter);
+
+      if (characters.length > 0) {
+        return characters;
+      }
+    } catch (error) {
+      console.warn('Failed to fetch characters from source:', url, error);
+    }
+  }
+
+  throw new Error('All character sources failed');
+}
 
 function loadPurchased(): number[] {
   try {
@@ -55,28 +155,17 @@ const actions = {
     if (store.isLoadingCharacters) return;
     store.isLoadingCharacters = true;
     try {
-      // Get latest release tag from GitHub API
-      const latestRelease = await fetch("https://api.github.com/repos/jynba/live2d-assets/releases/latest")
-        .then(res => {
-          if (!res.ok) throw new Error('GitHub API error');
-          return res.json();
-        });
-
-      const tag = latestRelease.tag_name;
-      // Using raw.githubusercontent.com as requested
-      const url = `https://raw.githubusercontent.com/jynba/live2d-assets/${tag}/characters.json`;
-
-      console.log('Fetching characters from latest release tag:', tag);
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch characters.json from release');
-
-      const data = await response.json();
-      if (Array.isArray(data) && data.length > 0) {
-        store.characters = data;
-        console.log('Characters loaded dynamically from release:', tag);
+      const cachedCharacters = loadCharactersCache();
+      if (cachedCharacters) {
+        store.characters = cachedCharacters;
       }
+
+      const characters = await fetchCharacterList();
+      store.characters = characters;
+      saveCharactersCache(characters);
+      console.log('Characters loaded from CDN source');
     } catch (error) {
-      console.warn('Failed to fetch characters from release, using defaults:', error);
+      console.warn('Failed to fetch characters, using cached/default data:', error);
     } finally {
       store.isLoadingCharacters = false;
     }

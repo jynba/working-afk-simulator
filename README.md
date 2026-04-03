@@ -68,15 +68,29 @@
 pnpm install
 ```
 
-### 3. 本地运行（开发模式）
+### 3. 本地运行（Electron 开发模式）
 
 ```bash
 pnpm dev
 ```
 
-执行后会启动 Vite 开发服务器和 Electron 主进程，你可以在桌面看到一个挂件窗口。
+或显式使用：
 
-### 4. 打包桌面应用
+```bash
+pnpm run dev:electron
+```
+
+这会启动带 `vite-plugin-electron` 的开发环境，并拉起 Electron 桌面挂件窗口。
+
+### 4. 本地运行（纯 Web 预览）
+
+```bash
+pnpm run dev:web
+```
+
+这个模式只启动浏览器页面，方便调样式和基础交互，但不包含 Electron 的 IPC、系统通知、本地安全存储和 TAPD 桌面同步能力。
+
+### 5. 打包桌面应用
 
 ```bash
 pnpm build
