@@ -47,6 +47,13 @@ jobs:
       - name: Build app
         run: pnpm vite build
 
+      - name: Cleanup stale DMG mounts
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: |
+          hdiutil info | awk '/\/Volumes\// {print $1}' | while read -r disk; do
+            hdiutil detach -force "$disk" || true
+          done
+
       - name: Package app
         run: ${{ matrix.build_command }}
 
