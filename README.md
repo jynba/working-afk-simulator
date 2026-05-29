@@ -1,4 +1,4 @@
-## 上班挂机模拟器（Working AFK Simulator）
+## 需求小人桌面挂件（Working AFK Simulator）
 
 一个运行在桌面的 **Electron + Vue3 挂机小挂件**，通过与 TAPD 的「只读式」弱集成，把你每天面对的需求列表和状态变更，转译成更轻松的数值养成与情绪反馈。
 
